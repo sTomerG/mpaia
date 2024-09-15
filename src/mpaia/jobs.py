@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING
 
 from apscheduler.triggers.cron import CronTrigger
 
 from mpaia.assistant import Assistant
+
+if TYPE_CHECKING:
+    from mpaia.bot import Bot
 
 
 class Job(ABC):
@@ -34,12 +37,12 @@ class Job(ABC):
         self.assistant = assistant
 
     @abstractmethod
-    async def execute(self, bot: Any) -> None:
+    async def execute(self, bot: "Bot") -> None:
         """
         Execute the job. This method must be implemented by subclasses.
 
         Args:
-            bot (Any): The bot instance used for sending messages.
+            bot (Bot): The bot instance used for sending messages.
         """
         pass
 
@@ -52,14 +55,14 @@ class Job(ABC):
         """
         return f"{self.__class__.__name__}_{self.cron_expression}_{self.chat_id}"
 
-    def generate_message(self) -> str:
+    async def generate_message(self) -> str:
         """
         Generate a message using the assistant and the prompt.
 
         Returns:
             str: The generated message.
         """
-        return self.assistant.process_message(self.prompt)
+        return await self.assistant.process_message(self.prompt)
 
 
 class TelegramMessageJob(Job):
@@ -67,50 +70,22 @@ class TelegramMessageJob(Job):
     A job that sends a message to a Telegram chat at scheduled times.
     """
 
-    async def execute(self, bot: Any) -> None:
+    async def execute(self, bot: "Bot") -> None:
         """
         Execute the job by generating and sending a message.
 
         Args:
-            bot (Any): The bot instance used for sending messages.
+            bot (Bot): The bot instance used for sending messages.
         """
-        message = self.generate_message()
-        await bot.send_scheduled_message(None, self.chat_id, message)
+        message = await self.generate_message()
+        await bot.send_message(self.chat_id, message)
 
-    async def execute_immediately(self, bot: Any) -> None:
+    async def execute_immediately(self, bot: "Bot") -> None:
         """
         Execute the job immediately without scheduling.
 
         Args:
-            bot (Any): The bot instance used for sending messages.
+            bot (Bot): The bot instance used for sending messages.
         """
-        message = self.generate_message()
-        await bot.send_message(self.chat_id, message)  # Changed this line
-
-
-class TestJob(Job):
-    """
-    A job that immediately sends a test message once.
-
-    Args:
-        prompt (str): The prompt to be used for generating messages.
-        chat_id (int): The ID of the chat where messages will be sent.
-        assistant (Assistant): The assistant used for processing messages.
-    """
-
-    def __init__(self, prompt: str, chat_id: int, assistant: Assistant):
-        super().__init__(
-            "* * * * *", prompt, chat_id, assistant
-        )  # Use a dummy cron expression that runs every minute
-
-    async def execute(self, bot: Any) -> None:
-        """
-        Execute the job by immediately generating and sending a test message.
-
-        Args:
-            bot (Any): The bot instance used for sending messages.
-        """
-        message = f"Test message: {self.generate_message()}"
-        await bot.send_scheduled_message(None, self.chat_id, message)
-        # Remove the job after execution
-        bot.scheduler.remove_job(self.get_id())
+        message = await self.generate_message()
+        await bot.send_message(self.chat_id, message)

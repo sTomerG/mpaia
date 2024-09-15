@@ -1,5 +1,6 @@
 import asyncio
 import os
+import signal
 from typing import Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -14,7 +15,7 @@ from telegram.ext import (
     filters,
 )
 
-from mpaia.assistant import Assistant, SimpleAssistant
+from mpaia.assistant import Assistant, OpenAIAssistant
 from mpaia.bot import Bot
 from mpaia.jobs import Job
 
@@ -75,18 +76,14 @@ class TelegramBot(Bot):
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
         """
-        Handle incoming messages.
-
-        Args:
-            update (Update): The update object from Telegram.
-            context (ContextTypes.DEFAULT_TYPE): The context object for the handler.
+        Handle incoming messages asynchronously.
         """
         if (
             self.allowed_chat_ids
             and update.effective_chat.id not in self.allowed_chat_ids
         ):
             return
-        response = self.assistant.process_message(update.message.text)
+        response = await self.assistant.process_message(update.message.text)
         await update.message.reply_text(response)
 
     async def send_log_message(
@@ -177,45 +174,6 @@ class TelegramBot(Bot):
         """
         return list(self.jobs.keys())
 
-    def run(self) -> None:
-        """
-        Run the Telegram bot synchronously.
-        """
-        asyncio.run(self.run_async())
-
-    async def run_async(self) -> None:
-        """
-        Run the Telegram bot asynchronously.
-        """
-        if not hasattr(self, "application"):
-            await self.initialize()
-
-        try:
-            await self.application.run_polling()
-        finally:
-            await self.application.stop()
-
-    async def initialize(self) -> None:
-        """
-        Initialize the Telegram bot application.
-        """
-        token = os.getenv("TELEGRAM_BOT_TOKEN")
-        if not token:
-            raise ValueError("TELEGRAM_BOT_TOKEN environment variable is not set")
-
-        self.application = Application.builder().token(token).build()
-
-        self.application.add_handler(CommandHandler("start", self.start))
-        self.application.add_handler(
-            MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message)
-        )
-
-        self.application.add_error_handler(self.error_handler)
-
-        await self.application.initialize()
-        await self.application.start()
-        await self.application.updater.start_polling()
-
     async def error_handler(
         self, update: object, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -229,9 +187,63 @@ class TelegramBot(Bot):
         logger.error(f"Exception while handling an update: {context.error}")
         await self.send_log_message(context, f"Error: {context.error}")
 
+    async def initialize(self) -> None:
+        """
+        Initialize the bot application.
+        """
+        if hasattr(self, "application"):
+            return  # Already initialized
+
+        token = os.getenv("TELEGRAM_BOT_TOKEN")
+        if not token:
+            raise ValueError("TELEGRAM_BOT_TOKEN environment variable is not set")
+
+        self.application = Application.builder().token(token).build()
+        await self.application.initialize()
+        self.application.add_handler(CommandHandler("start", self.start))
+        self.application.add_handler(
+            MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message)
+        )
+        self.application.add_error_handler(self.error_handler)
+
+        logger.info("Telegram bot initialized")
+
+    async def run(self) -> None:
+        """
+        Run the bot asynchronously.
+        """
+        await self.initialize()
+        logger.info("Starting Telegram bot")
+        await self.application.start()
+        await self.application.updater.start_polling()
+
+        # Set up signal handlers for graceful shutdown
+        loop = asyncio.get_running_loop()
+        stop_signal = asyncio.Event()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, stop_signal.set)
+
+        # Run the bot until stopped
+        try:
+            await stop_signal.wait()
+        finally:
+            await self.shutdown()
+
+    async def shutdown(self, signal: Optional[signal.Signals] = None) -> None:
+        """
+        Shutdown the bot gracefully.
+        """
+        if signal:
+            logger.info(f"Received exit signal {signal.name}...")
+        logger.info("Shutting down...")
+        await self.application.updater.stop()
+        await self.application.stop()
+        await self.application.shutdown()
+        logger.info("Shutdown complete.")
+
 
 if __name__ == "__main__":
     # Example usage
-    assistant = SimpleAssistant()
+    assistant = OpenAIAssistant()
     bot = TelegramBot(assistant)
-    bot.run()
+    asyncio.run(bot.run())

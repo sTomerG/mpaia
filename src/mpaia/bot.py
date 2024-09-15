@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Any, TYPE_CHECKING
 
 from mpaia.assistant import Assistant
-from mpaia.jobs import Job
+
+if TYPE_CHECKING:
+    from mpaia.jobs import Job
 
 
 class Bot(ABC):
@@ -45,7 +47,7 @@ class Bot(ABC):
         pass
 
     @abstractmethod
-    def add_job(self, job: Job) -> None:
+    def add_job(self, job: "Job") -> None:
         """
         Add a new job to the scheduler.
 
@@ -75,8 +77,22 @@ class Bot(ABC):
         pass
 
     @abstractmethod
-    def run(self) -> None:
+    async def run(self) -> None:
         """
         Run the bot.
+        """
+        pass
+
+    @abstractmethod
+    async def handle_message(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Handle incoming messages asynchronously.
+        """
+        pass
+
+    @abstractmethod
+    async def shutdown(self, signal: Optional[Any] = None) -> None:
+        """
+        Shutdown the bot gracefully.
         """
         pass

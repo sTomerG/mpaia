@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.schema import AIMessage
+from langchain.schema.output import LLMResult
 from langchain.schema.runnable import RunnableSequence
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_openai import ChatOpenAI
@@ -15,7 +17,7 @@ class Assistant(ABC):
     """
 
     @abstractmethod
-    def process_message(self, message: str) -> str:
+    async def process_message(self, message: str) -> str:
         """
         Process a message and return a response.
 
@@ -33,7 +35,7 @@ class SimpleAssistant(Assistant):
     A simple implementation of the Assistant class that echoes the input message.
     """
 
-    def process_message(self, message: str) -> str:
+    async def process_message(self, message: str) -> str:
         """
         Process a message by simply echoing it back.
 
@@ -67,16 +69,17 @@ class OpenAIAssistant(Assistant):
 
         self.llm = ChatOpenAI(temperature=0.7, model_name=model_name)
         self.memory = ChatMessageHistory()
+        self.system_message = "You are a helpful personal assistant called Mpaia. Your replies are short and concise."
         prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", "You are a helpful AI assistant."),
+                ("system", self.system_message),
                 MessagesPlaceholder(variable_name="history"),
                 ("human", "{input}"),
             ]
         )
         self.chain = RunnableSequence(prompt | self.llm)
 
-    def process_message(self, message: str) -> str:
+    async def process_message(self, message: str) -> str:
         """
         Process a message using the OpenAI language model.
 
@@ -85,15 +88,29 @@ class OpenAIAssistant(Assistant):
 
         Returns:
             str: The AI-generated response or an error message.
+
+        Raises:
+            ValueError: If the response type is unexpected.
+            Exception: If any other error occurs during processing.
         """
         try:
             self.memory.add_user_message(message)
-            response = self.chain.invoke(
-                {"history": self.memory.messages, "input": message}
+
+            # Ensure the system message is always included
+            history = [("system", self.system_message)] + self.memory.messages
+
+            response: LLMResult = await self.chain.ainvoke(
+                {"input": message, "history": history}
             )
-            ai_message = str(response.content)  # Explicitly convert to string
+            if isinstance(response, AIMessage):
+                ai_message = response
+            elif isinstance(response, dict) and "generations" in response:
+                ai_message = response["generations"][0][0].message
+            else:
+                raise ValueError(f"Unexpected response type: {type(response)}")
+
             self.memory.add_ai_message(ai_message)
-            return ai_message.strip()
+            return str(ai_message.content)
         except Exception as e:
             logger.exception(f"An error occurred while processing message: {e}")
             return f"An error occurred: {str(e)}"
