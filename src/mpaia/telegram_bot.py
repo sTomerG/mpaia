@@ -191,6 +191,9 @@ class TelegramBot(Bot):
         """
         Initialize the bot application.
         """
+        if hasattr(self, "application"):
+            return  # Already initialized
+
         token = os.getenv("TELEGRAM_BOT_TOKEN")
         if not token:
             raise ValueError("TELEGRAM_BOT_TOKEN environment variable is not set")
