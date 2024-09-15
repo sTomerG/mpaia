@@ -52,14 +52,14 @@ class Job(ABC):
         """
         return f"{self.__class__.__name__}_{self.cron_expression}_{self.chat_id}"
 
-    def generate_message(self) -> str:
+    async def generate_message(self) -> str:
         """
         Generate a message using the assistant and the prompt.
 
         Returns:
             str: The generated message.
         """
-        return self.assistant.process_message(self.prompt)
+        return await self.assistant.process_message(self.prompt)
 
 
 class TelegramMessageJob(Job):
@@ -74,7 +74,7 @@ class TelegramMessageJob(Job):
         Args:
             bot (Any): The bot instance used for sending messages.
         """
-        message = self.generate_message()
+        message = await self.generate_message()
         await bot.send_scheduled_message(None, self.chat_id, message)
 
     async def execute_immediately(self, bot: Any) -> None:
@@ -84,7 +84,7 @@ class TelegramMessageJob(Job):
         Args:
             bot (Any): The bot instance used for sending messages.
         """
-        message = self.generate_message()
+        message = await self.generate_message()
         await bot.send_message(self.chat_id, message)  # Changed this line
 
 
