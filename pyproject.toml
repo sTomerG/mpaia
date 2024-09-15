@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mpaia"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = "My Personal AI Assistant"
 authors = [{name = "Tomer Gabay", email = "tomergabay001@gmail.com"}]
 license = {text = "MIT"}
