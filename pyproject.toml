@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mpaia"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "My Personal AI Assistant"
 authors = [{name = "Tomer Gabay", email = "tomergabay001@gmail.com"}]
 license = {text = "MIT"}
@@ -16,15 +16,14 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "python-telegram-bot>=20.0",
-    "python-dotenv>=1.0.0",
-    "openai>=1.0.0",
-    "langchain>=0.0.300",
-    "langchain-openai>=0.0.5",
-    "langchain-community>=0.0.5",
-    "loguru>=0.7.0",
-    "APScheduler>=3.10.0",
-    "holidays>=0.35",
+    "python-telegram-bot>=20.8",
+    "python-dotenv>=1.0.1",
+    "openai>=1.45.0",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-community>=0.3.0",
+    "loguru>=0.7.2",
+    "APScheduler>=3.10.4",
 ]
 
 [project.optional-dependencies]
