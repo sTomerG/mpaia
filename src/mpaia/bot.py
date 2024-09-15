@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Any
+from typing import Optional, Any, TYPE_CHECKING
 
 from mpaia.assistant import Assistant
-from mpaia.jobs import Job
+
+if TYPE_CHECKING:
+    from mpaia.jobs import Job
 
 
 class Bot(ABC):
@@ -45,12 +47,12 @@ class Bot(ABC):
         pass
 
     @abstractmethod
-    def add_job(self, job: Any) -> None:
+    def add_job(self, job: "Job") -> None:
         """
         Add a new job to the scheduler.
 
         Args:
-            job (Any): The job to add.
+            job (Job): The job to add.
         """
         pass
 
