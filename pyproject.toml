@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mpaia"
+version = "0.1.0"
+description = "My Personal AI Assistant"
+authors = [{name = "Tomer Gabay", email = "tomergabay001@gmail.com"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "python-telegram-bot>=20.0",
+    "python-dotenv>=1.0.0",
+    "openai>=1.0.0",
+    "langchain>=0.0.300",
+    "langchain-openai>=0.0.5",
+    "langchain-community>=0.0.5",
+    "loguru>=0.7.0",
+    "APScheduler>=3.10.0",
+    "holidays>=0.35",
+]
+
+[project.optional-dependencies]
+test = [
+    "pre-commit==3.*",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/sTomerG/mpaia"
+"Bug Tracker" = "https://github.com/sTomerG/mpaia/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
