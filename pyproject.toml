@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "mpaia"
-version = "0.1.0a2"
+version = "0.1.1"
 description = "My Personal AI Assistant"
 authors = [{name = "Tomer Gabay", email = "tomergabay001@gmail.com"}]
 license = {text = "MIT"}

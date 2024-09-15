@@ -69,9 +69,10 @@ class OpenAIAssistant(Assistant):
 
         self.llm = ChatOpenAI(temperature=0.7, model_name=model_name)
         self.memory = ChatMessageHistory()
+        self.system_message = "You are a helpful personal assistant called Mpaia. Your replies are short and concise."
         prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", "You are a helpful AI assistant."),
+                ("system", self.system_message),
                 MessagesPlaceholder(variable_name="history"),
                 ("human", "{input}"),
             ]
@@ -94,8 +95,12 @@ class OpenAIAssistant(Assistant):
         """
         try:
             self.memory.add_user_message(message)
+
+            # Ensure the system message is always included
+            history = [("system", self.system_message)] + self.memory.messages
+
             response: LLMResult = await self.chain.ainvoke(
-                {"input": message, "history": self.memory.messages}
+                {"input": message, "history": history}
             )
             if isinstance(response, AIMessage):
                 ai_message = response
