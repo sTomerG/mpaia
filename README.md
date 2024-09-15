@@ -4,6 +4,14 @@ A Python package for your personal AI assistant with Telegram integration and Op
 
 ## Installation
 
+You can install MPAIA using pip:
+
+```bash
+pip install mpaia
+```
+
+Alternatively, you can install from the source:
+
 1. Clone the repository:
 
    ```bash
@@ -19,22 +27,20 @@ A Python package for your personal AI assistant with Telegram integration and Op
 
 ## Configuration
 
-1. Create a `.env` file in the root directory with the following content:
+Create a `.env` file in the virtual environment with mpaia installed with the following content:
 
-   ```env
-   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-   OPENAI_API_KEY=your_openai_api_key
-   ALLOWED_CHAT_IDS=comma_separated_list_of_allowed_chat_ids
-   ADMIN_CHAT_ID=your_admin_chat_id
-   ```
+```env
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+OPENAI_API_KEY=your_openai_api_key
+ALLOWED_CHAT_IDS=comma_separated_list_of_allowed_chat_ids
+ADMIN_CHAT_ID=your_admin_chat_id
+```
 
-   Replace the placeholders with your actual values.
-
-2. Create a `user_config` directory in the root of the project if it doesn't exist already.
+Replace the placeholders with your actual values.
 
 ## Usage
 
-1. Create custom jobs by subclassing `TelegramMessageJob` in `user_config/custom_jobs.py`. For example:
+1. Create custom jobs by subclassing `TelegramMessageJob` in a new file called `custom_jobs.py`. For example:
 
    ```python
    from mpaia.jobs import TelegramMessageJob
@@ -55,40 +61,44 @@ A Python package for your personal AI assistant with Telegram integration and Op
            await super().execute(bot)
    ```
 
-2. Create a `run_bot.py` file in the `user_config` directory to set up and run your bot:
+2. Create a `run_bot.py` file and run your bot:
 
    ```python
-   from dotenv import load_dotenv
+    import asyncio
 
-   from mpaia.telegram_bot import TelegramBot
-   from mpaia.assistant import OpenAIAssistant
-   from custom_jobs import SalaryJob
+    from custom_jobs import SalaryJob
+    from dotenv import load_dotenv
 
-   def run_bot():
-       load_dotenv(override=True)
-       assistant = OpenAIAssistant()
-       bot = TelegramBot(assistant)
+    from mpaia.assistant import OpenAIAssistant
+    from mpaia.telegram_bot import TelegramBot
 
-       # Add custom jobs
-       if bot.allowed_chat_ids:
-           for chat_id in bot.allowed_chat_ids:
-               bot.add_job(SalaryJob(chat_id, assistant))
 
-       bot.run()
+    async def run_bot():
+        load_dotenv(override=True)
+        assistant = OpenAIAssistant()
+        bot = TelegramBot(assistant)
 
-   if __name__ == "__main__":
-       run_bot()
+        # Add custom jobs
+        if bot.allowed_chat_ids:
+            for chat_id in bot.allowed_chat_ids:
+                bot.add_job(SalaryJob(chat_id, assistant))
+
+        await bot.run()
+
+
+    if __name__ == "__main__":
+        asyncio.run(run_bot())
    ```
 
 3. Run your bot:
 
    ```bash
-   python user_config/run_bot.py
+   python run_bot.py
    ```
 
 ## Customization
 
-- To add more custom jobs, create new classes in `user_config/custom_jobs.py` and add them to the bot in `run_bot.py`.
+- To add more custom jobs, create new classes in `custom_jobs.py` and add them to the bot in `run_bot.py`.
 - Modify the `OpenAIAssistant` parameters in `run_bot.py` to change the AI model or its behavior.
 
 ## Note
