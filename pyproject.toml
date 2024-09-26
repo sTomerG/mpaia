@@ -24,6 +24,7 @@ dependencies = [
     "langchain-community>=0.3.0",
     "loguru>=0.7.2",
     "APScheduler>=3.10.4",
+    "langgraph>=0.2.21"
 ]
 
 [project.optional-dependencies]
