@@ -1,6 +1,7 @@
 import os
 import re
 from abc import ABC, abstractmethod
+from typing import Any, Optional, Union
 
 from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -30,12 +31,13 @@ class Assistant(ABC):
         pass
 
     @abstractmethod
-    async def process_message(self, message: str) -> str:
+    async def process_message(self, message: str, memory: Optional[Any] = None) -> str:
         """
         Process a message and return a response.
 
         Args:
             message (str): The input message to process.
+            memory (Optional[Any]): Optional memory object for maintaining conversation context.
 
         Returns:
             str: The processed response.
@@ -48,12 +50,13 @@ class SimpleAssistant(Assistant):
     A simple implementation of the Assistant class that echoes the input message.
     """
 
-    async def process_message(self, message: str) -> str:
+    async def process_message(self, message: str, memory: Optional[Any] = None) -> str:
         """
         Process a message by simply echoing it back.
 
         Args:
             message (str): The input message to process.
+            memory (Optional[Any]): Unused in this implementation, but required for compatibility.
 
         Returns:
             str: A string containing "You said: " followed by the input message.
@@ -99,19 +102,19 @@ class OpenAIAssistant(Assistant):
         )
         self.chain = RunnableSequence(prompt | self.llm)
 
-    async def process_message(self, message: str, memory=None) -> str:
+    async def process_message(self, message: str, memory: Optional[Any] = None) -> str:
         """
         Process a message using the OpenAI language model.
 
         Args:
             message (str): The input message to process.
+            memory (Optional[Any]): Optional memory object for maintaining conversation context.
 
         Returns:
             str: The AI-generated response or an error message.
 
         Raises:
             ValueError: If the response type is unexpected.
-            Exception: If any other error occurs during processing.
         """
         try:
             self.memory.add_user_message(message)
@@ -149,14 +152,16 @@ class DataAssistant(Assistant):
     An implementation of the Assistant class that interacts with a SQL database.
 
     Args:
-        db_connection: The database connection. Can be a SQLAlchemy engine, connection string, or SQLDatabase instance.
-        model_name (str): The name of the OpenAI model to use. Defaults to "gpt-4o".
+        db_connection (Union[str, SQLDatabase]): The database connection. Can be a SQLAlchemy engine, connection string, or SQLDatabase instance.
+        model_name (str, optional): The name of the OpenAI model to use. Defaults to "gpt-4o".
 
     Raises:
         ValueError: If the OPENAI_API_KEY environment variable is not set or if an invalid database connection is provided.
     """
 
-    def __init__(self, db_connection, model_name: str = "gpt-4o"):
+    def __init__(
+        self, db_connection: Union[str, SQLDatabase], model_name: str = "gpt-4o"
+    ):
         load_dotenv()  # Load environment variables from .env file
 
         api_key = os.getenv("OPENAI_API_KEY")
@@ -196,18 +201,16 @@ class DataAssistant(Assistant):
             state_modifier=self.system_message,
         )
 
-    async def process_message(self, message: str, memory=None) -> str:
+    async def process_message(self, message: str, memory: Optional[Any] = None) -> str:
         """
         Process a natural language message by interacting with the SQL database.
 
         Args:
             message (str): The input message to process.
+            memory (Optional[Any]): The chat history memory to use. If None, use the instance's memory.
 
         Returns:
             str: The processed response from the database interaction.
-
-        Raises:
-            Exception: If any error occurs during processing.
         """
         memory = memory or self.memory
         memory.add_user_message(message)
@@ -216,14 +219,14 @@ class DataAssistant(Assistant):
             logger.info(f"Processing input: '{message}'")
             for s in self.agent.stream({"messages": memory.messages}):
                 logger.debug(s)
-            result = s.get("agent").get("messages")[0].content
+            result = s.get("agent", {}).get("messages", [{}])[0].get("content", "")
             logger.info(f"Result: '{result}'")
-            return result
+            return str(result)
         except Exception as e:
             logger.exception(f"An error occurred while processing message: {e}")
             return f"An error occurred: {str(e)}"
 
-    def _get_database(self, db_connection):
+    def _get_database(self, db_connection: Union[str, SQLDatabase]) -> SQLDatabase:
         """
         Helper method to create a SQLDatabase instance from various input types.
         """
@@ -296,14 +299,18 @@ class MultiAssistant(Assistant):
             raise ValueError(f"Unexpected response type: {type(response)}")
 
         logger.debug(f"Assistant selection response: {ai_message.content}")
-        index = int(re.search(r"\d+", ai_message.content).group())
-        selected_assistant = self.assistants[index]
-        logger.info(
-            f"Selected assistant: {selected_assistant.__class__.__name__} for message: {message}"
-        )
-        return selected_assistant
+        match = re.search(r"\d+", ai_message.content)
+        if match:
+            index = int(match.group())
+            selected_assistant = self.assistants[index]
+            logger.info(
+                f"Selected assistant: {selected_assistant.__class__.__name__} for message: {message}"
+            )
+            return selected_assistant
+        else:
+            raise ValueError("No assistant index found in the response")
 
-    async def process_message(self, message: str) -> str:
+    async def process_message(self, message: str, memory: Optional[Any] = None) -> str:
         """
         Process a message using the selected assistant.
         """
