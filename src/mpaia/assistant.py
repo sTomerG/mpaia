@@ -219,7 +219,7 @@ class DataAssistant(Assistant):
             logger.info(f"Processing input: '{message}'")
             for s in self.agent.stream({"messages": memory.messages}):
                 logger.debug(s)
-            result = s.get("agent", {}).get("messages", [{}])[0].get("content", "")
+            result = s.get("agent").get("messages")[0].content
             logger.info(f"Result: '{result}'")
             return str(result)
         except Exception as e:
